@@ -1,5 +1,6 @@
 shader_type spatial;
 render_mode cull_disabled;
+render_mode blend_mix;
 
 uniform sampler2D texture_vol;
 uniform vec4 color : hint_color;
@@ -7,7 +8,6 @@ uniform vec3 scale;
 uniform vec2 tile_uv;
 uniform int slice_number;
 uniform bool shaded;
-
 
 vec4 texture3D(sampler2D tex, vec3 UVW, vec2 tiling, float LOD) {
 	
@@ -40,7 +40,7 @@ vec4 volume(vec3 sample, float LOD) {
 vec4 modulated_volume(vec3 sample, vec4 modulate, float LOD) {
 	vec4 vol = volume(sample, LOD);
 	vec3 colour = vol.rgb * modulate.rgb;
-	float alpha = clamp(vol.a * modulate.a, 0.0, 1.0);
+	float alpha = clamp(16.0 * vol.a * modulate.a / float(slice_number), 0.0, 1.0);
 	return vec4(colour, alpha);
 }
 
@@ -63,7 +63,8 @@ void vertex() {
 
 void fragment() {
 	
-	if(pos.x < -1.0 || pos.x > 1.0 || pos.y < -1.0 || pos.y > 1.0 || pos.z < -1.0 || pos.z > 1.0) {
+	float bias = 0.01;
+	if(pos.x < -1.0+bias || pos.x > 1.0-bias || pos.y < -1.0+bias || pos.y > 1.0-bias || pos.z < -1.0+bias || pos.z > 1.0-bias) {
 		discard;
 	}
 	
