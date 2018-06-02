@@ -13,5 +13,5 @@ And in the demo project you can change your view with the WASD keys.
 
 ## What happened to shaded?
 
-As of Version 1.1, volunes cannot be affected by lights anymore. But don't worry. It will come back.
+As of Version 1.2, volunes cannot be affected by lights anymore. But don't worry. It will come back.
 
