@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=2]
+[gd_scene load_steps=14 format=2]
 
 [ext_resource path="res://addons/volume/volume_shader.shader" type="Shader" id=1]
 [ext_resource path="res://suzanne_volume.png" type="Texture" id=2]
@@ -6,8 +6,9 @@
 [ext_resource path="res://addons/volume/icon.png" type="Texture" id=4]
 [ext_resource path="res://CamControl.gd" type="Script" id=5]
 [ext_resource path="res://Settings.gd" type="Script" id=6]
+[ext_resource path="res://Square.ttf" type="DynamicFontData" id=7]
 
-[sub_resource type="ProceduralSky" id=1]
+[sub_resource type="ProceduralSky" id=4]
 
 radiance_size = 4
 sky_top_color = Color( 0.0470588, 0.454902, 0.976471, 1 )
@@ -28,10 +29,10 @@ sun_energy = 16.0
 texture_size = 2
 _sections_unfolded = [ "Sun" ]
 
-[sub_resource type="Environment" id=2]
+[sub_resource type="Environment" id=5]
 
 background_mode = 2
-background_sky = SubResource( 1 )
+background_sky = SubResource( 4 )
 background_sky_custom_fov = 0.0
 background_color = Color( 0, 0, 0, 1 )
 background_energy = 1.0
@@ -78,9 +79,9 @@ ssao_quality = 0
 ssao_blur = 3
 ssao_edge_sharpness = 4.0
 dof_blur_far_enabled = false
-dof_blur_far_distance = 127.75
+dof_blur_far_distance = 0.01
 dof_blur_far_transition = 20.0
-dof_blur_far_amount = 0.0
+dof_blur_far_amount = 0.23
 dof_blur_far_quality = 2
 dof_blur_near_enabled = false
 dof_blur_near_distance = 2.0
@@ -106,19 +107,20 @@ adjustment_enabled = false
 adjustment_brightness = 1.0
 adjustment_contrast = 1.0
 adjustment_saturation = 1.0
+_sections_unfolded = [ "DOF Far Blur", "DOF Near Blur" ]
 
-[sub_resource type="ShaderMaterial" id=3]
+[sub_resource type="ShaderMaterial" id=6]
 
 render_priority = 0
 shader = ExtResource( 1 )
-shader_param/color = Color( 1, 1, 1, 0.44749 )
+shader_param/color = Color( 0.84375, 0.84375, 0.84375, 0.303843 )
 shader_param/scale = Vector3( 1, 1, 1 )
 shader_param/tile_uv = Vector2( 8, 16 )
-shader_param/slice_number = 32
-shader_param/shaded = false
+shader_param/dither_strength = 0.25
+shader_param/slice_number = 24
 shader_param/texture_vol = ExtResource( 2 )
 
-[sub_resource type="SphereMesh" id=4]
+[sub_resource type="SphereMesh" id=3]
 
 radius = 0.2
 height = 0.4
@@ -126,11 +128,37 @@ radial_segments = 64
 rings = 32
 is_hemisphere = false
 
+[sub_resource type="DynamicFont" id=7]
+
+size = 49
+use_mipmaps = false
+use_filter = false
+font_data = ExtResource( 7 )
+_sections_unfolded = [ "Settings" ]
+
+[sub_resource type="Animation" id=8]
+
+length = 4.0
+loop = true
+step = 0.1
+tracks/0/type = "value"
+tracks/0/path = NodePath("Ball:translation")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/keys = {
+"times": PoolRealArray( 0, 2, 4 ),
+"transitions": PoolRealArray( -1.82207, -1.82, -1.82 ),
+"update": 0,
+"values": [ Vector3( -1.3793, 0.507541, 0.226286 ), Vector3( 1.3793, 0.507541, 0.226286 ), Vector3( -1.3793, 0.507541, 0.226286 ) ]
+}
+
 [node name="Main" type="Node" index="0"]
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." index="0"]
 
-environment = SubResource( 2 )
+environment = SubResource( 5 )
 
 [node name="DirectionalLight" type="DirectionalLight" parent="." index="1"]
 
@@ -162,9 +190,9 @@ _sections_unfolded = [ "Directional Shadow", "Shadow" ]
 
 [node name="Volume" type="ImmediateGeometry" parent="." index="2"]
 
-transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.497284, 0 )
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0.119998, 0.497284, 0 )
 layers = 1
-material_override = SubResource( 3 )
+material_override = SubResource( 6 )
 cast_shadow = 2
 extra_cull_margin = 0.0
 use_in_baked_light = false
@@ -177,15 +205,16 @@ _sections_unfolded = [ "Geometry" ]
 __meta__ = {
 "_editor_icon": ExtResource( 4 )
 }
-sliceCount = 32
-shaded = false
-modulate = Color( 1, 1, 1, 0.44749 )
+sliceCount = 24
+dither = 0.25
+modulate = Color( 0.84375, 0.84375, 0.84375, 0.303843 )
+blend_mode = 0
 volume_texture = ExtResource( 2 )
 texture_tiling = Vector2( 8, 16 )
 
 [node name="Ball" type="MeshInstance" parent="." index="3"]
 
-transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0140674, 0.507541, 0 )
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 1.37107, 0.507541, 0.226286 )
 layers = 1
 material_override = null
 cast_shadow = 1
@@ -195,12 +224,14 @@ lod_min_distance = 0.0
 lod_min_hysteresis = 0.0
 lod_max_distance = 0.0
 lod_max_hysteresis = 0.0
-mesh = SubResource( 4 )
+mesh = SubResource( 3 )
 skeleton = NodePath("..")
 material/0 = null
-_sections_unfolded = [ "Transform", "material" ]
+_sections_unfolded = [ "Transform" ]
 
 [node name="CameraRoot" type="Position3D" parent="." index="4"]
+
+editor/display_folded = true
 
 [node name="Camera" type="Camera" parent="CameraRoot" index="0"]
 
@@ -221,14 +252,13 @@ script = ExtResource( 5 )
 
 [node name="Panel" type="Panel" parent="." index="5"]
 
-editor/display_folded = true
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
 margin_right = 211.0
 margin_bottom = 183.0
-rect_min_size = Vector2( 211, 183 )
+rect_min_size = Vector2( 211, 200 )
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 0
@@ -239,6 +269,7 @@ _sections_unfolded = [ "Margin", "Rect" ]
 
 [node name="Settings" type="VBoxContainer" parent="Panel" index="0"]
 
+editor/display_folded = true
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 1.0
@@ -311,10 +342,10 @@ mouse_default_cursor_shape = 0
 size_flags_horizontal = 3
 size_flags_vertical = 0
 min_value = 8.0
-max_value = 256.0
+max_value = 128.0
 step = 1.0
 page = 0.0
-value = 32.0
+value = 24.0
 exp_edit = false
 rounded = false
 editable = true
@@ -339,12 +370,12 @@ mouse_filter = 2
 mouse_default_cursor_shape = 0
 size_flags_horizontal = 1
 size_flags_vertical = 4
-text = "32"
+text = "24"
 percent_visible = 1.0
 lines_skipped = 0
 max_lines_visible = -1
 
-[node name="Shaded" type="HBoxContainer" parent="Panel/Settings" index="1"]
+[node name="DitherStrength" type="HBoxContainer" parent="Panel/Settings" index="1"]
 
 editor/display_folded = true
 anchor_left = 0.0
@@ -353,7 +384,7 @@ anchor_right = 0.0
 anchor_bottom = 0.0
 margin_top = 20.0
 margin_right = 197.0
-margin_bottom = 44.0
+margin_bottom = 36.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 1
@@ -362,60 +393,152 @@ size_flags_horizontal = 1
 size_flags_vertical = 1
 alignment = 0
 
-[node name="Label" type="Label" parent="Panel/Settings/Shaded" index="0"]
+[node name="Label" type="Label" parent="Panel/Settings/DitherStrength" index="0"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_top = 5.0
-margin_right = 46.0
-margin_bottom = 19.0
+margin_top = 1.0
+margin_right = 97.0
+margin_bottom = 15.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 2
 mouse_default_cursor_shape = 0
 size_flags_horizontal = 1
 size_flags_vertical = 4
-text = "Shaded"
+text = "Dither Strength"
 percent_visible = 1.0
 lines_skipped = 0
 max_lines_visible = -1
 
-[node name="CheckBox" type="CheckBox" parent="Panel/Settings/Shaded" index="1"]
+[node name="HSlider" type="HSlider" parent="Panel/Settings/DitherStrength" index="1"]
 
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_left = 50.0
-margin_right = 74.0
-margin_bottom = 24.0
+margin_left = 101.0
+margin_right = 165.0
+margin_bottom = 16.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 focus_mode = 2
 mouse_filter = 0
 mouse_default_cursor_shape = 0
-size_flags_horizontal = 2
-size_flags_vertical = 1
-toggle_mode = true
-enabled_focus_mode = 2
-shortcut = null
-group = null
-flat = false
-align = 0
+size_flags_horizontal = 3
+size_flags_vertical = 0
+min_value = 0.0
+max_value = 1.0
+step = 0.01
+page = 0.0
+value = 0.25
+exp_edit = false
+rounded = false
+editable = true
+tick_count = 0
+ticks_on_borders = false
+focus_mode = 2
 _sections_unfolded = [ "Size Flags" ]
 
-[node name="Colour" type="HBoxContainer" parent="Panel/Settings" index="2"]
+[node name="Label2" type="Label" parent="Panel/Settings/DitherStrength" index="2"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 169.0
+margin_top = 1.0
+margin_right = 197.0
+margin_bottom = 15.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 2
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 4
+text = "0.25"
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="BlendMode" type="HBoxContainer" parent="Panel/Settings" index="2"]
 
 editor/display_folded = true
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_top = 48.0
+margin_top = 40.0
 margin_right = 197.0
-margin_bottom = 68.0
+margin_bottom = 60.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 1
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+alignment = 0
+
+[node name="Label" type="Label" parent="Panel/Settings/BlendMode" index="0"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_top = 3.0
+margin_right = 77.0
+margin_bottom = 17.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 2
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 4
+text = "Blend Mode"
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="OptionButton" type="OptionButton" parent="Panel/Settings/BlendMode" index="1"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 81.0
+margin_right = 197.0
+margin_bottom = 20.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+focus_mode = 2
+mouse_filter = 0
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 3
+size_flags_vertical = 1
+toggle_mode = false
+action_mode = 0
+enabled_focus_mode = 2
+shortcut = null
+group = null
+text = "Mix"
+flat = false
+align = 1
+items = [ "Mix", null, false, 0, null, "Add", null, false, 1, null, "Sub", null, false, 2, null, "Mul", null, false, 3, null ]
+selected = 0
+_sections_unfolded = [ "Size Flags" ]
+
+[node name="Colour" type="HBoxContainer" parent="Panel/Settings" index="3"]
+
+editor/display_folded = true
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_top = 64.0
+margin_right = 197.0
+margin_bottom = 84.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 1
@@ -470,16 +593,16 @@ color = Color( 1, 1, 1, 0.447059 )
 edit_alpha = true
 _sections_unfolded = [ "Anchor", "Size Flags" ]
 
-[node name="Textures" type="HBoxContainer" parent="Panel/Settings" index="3"]
+[node name="Textures" type="HBoxContainer" parent="Panel/Settings" index="4"]
 
 editor/display_folded = true
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 0.0
 anchor_bottom = 0.0
-margin_top = 72.0
+margin_top = 88.0
 margin_right = 197.0
-margin_bottom = 164.0
+margin_bottom = 180.0
 rect_pivot_offset = Vector2( 0, 0 )
 rect_clip_content = false
 mouse_filter = 1
@@ -622,9 +745,49 @@ text = "Cup"
 flat = false
 align = 1
 
+[node name="FrameRate" type="Label" parent="." index="6"]
+
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 874.0
+margin_top = -1.0
+margin_right = 1018.0
+margin_bottom = 51.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 2
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 4
+custom_fonts/font = SubResource( 7 )
+custom_colors/font_color = Color( 0.903503, 1, 0.601563, 1 )
+custom_colors/font_color_shadow = Color( 0, 0, 0, 0.723765 )
+custom_constants/shadow_offset_x = 3
+custom_constants/shadow_offset_y = 3
+text = "37"
+align = 2
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+_sections_unfolded = [ "custom_styles" ]
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." index="7"]
+
+root_node = NodePath("..")
+autoplay = "Ball"
+playback_process_mode = 1
+playback_default_blend_time = 0.0
+playback_speed = 1.0
+anims/Ball = SubResource( 8 )
+blend_times = [  ]
+
 [connection signal="value_changed" from="Panel/Settings/SliceNumber/HSlider" to="Panel/Settings" method="_slice_count_changed"]
 
-[connection signal="toggled" from="Panel/Settings/Shaded/CheckBox" to="Panel/Settings" method="_shaded_changed"]
+[connection signal="value_changed" from="Panel/Settings/DitherStrength/HSlider" to="Panel/Settings" method="_dither_strength_changed"]
+
+[connection signal="item_selected" from="Panel/Settings/BlendMode/OptionButton" to="Panel/Settings" method="_blend_mode_changed"]
 
 [connection signal="color_changed" from="Panel/Settings/Colour/ColorPickerButton" to="Panel/Settings" method="_colour_changed"]
 
