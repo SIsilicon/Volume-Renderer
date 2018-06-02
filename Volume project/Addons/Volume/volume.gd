@@ -2,10 +2,11 @@ tool
 extends ImmediateGeometry
 
 export(int, 8, 512) var sliceCount = 64 setget set_slices
-export(bool) var shaded = false setget set_shaded
+export(float, 0, 10) var dither = 0.01 setget set_dither
+#export(bool) var shaded = false setget set_shaded
 export(Color) var modulate = Color(1,1,1) setget set_modulate
 
-#export(int, 'Mix', 'Add', 'Sub', 'Mul') var blend_mode = 0 setget set_blend
+export(int, 'Mix', 'Add', 'Sub', 'Mul') var blend_mode = 0 setget set_blend
 
 export(Texture) var volume_texture setget set_texture
 export(Vector2) var texture_tiling = Vector2(8, 16) setget set_tiling
@@ -15,10 +16,10 @@ func _init():
 	material_override = ShaderMaterial.new()
 	material_override.shader = preload("res://addons/volume/volume_shader.shader")
 	
-	set_slices(sliceCount)
-	set_modulate(modulate)
-	set_shaded(shaded)
-	set_tiling(texture_tiling)
+	#set_slices(sliceCount)
+	#set_modulate(modulate)
+	#set_shaded(shaded)
+	#set_tiling(texture_tiling)
 
 func _process(delta):
 	material_override.set_shader_param("scale", scale)
@@ -27,16 +28,30 @@ func set_modulate(mod):
 	modulate = mod
 	material_override.set_shader_param("color", modulate)
 
-func set_shaded(boolean):
-	shaded = boolean
-	material_override.set_shader_param("shaded", shaded)
+#func set_shaded(boolean):
+	#shaded = boolean
+	#material_override.set_shader_param("shaded", shaded)
+	
+func set_dither(strength):
+	dither = strength
+	material_override.set_shader_param("dither_strength", strength)
 
-#func set_blend(blend):
-	#blend_mode = blend
-	#var shader = material_override.shader.code
-	#var render_mode_loc = shader.find('render_mode blend_')
-	#
-	#print(render_mode_loc)
+func set_blend(blend):
+	blend_mode = blend
+	var shader = material_override.shader.code
+	var render_mode_loc = shader.find('render_mode blend')+18
+	shader.erase(render_mode_loc, 3)
+	
+	var new_blend;
+	match blend:
+		0: new_blend = 'mix'
+		1: new_blend = 'add'
+		2: new_blend = 'sub'
+		3: new_blend = 'mul'
+	shader = shader.insert(render_mode_loc, new_blend)
+	
+	material_override.shader.code = shader
+	print(blend)
 
 func set_texture(tex):
 	volume_texture = tex

@@ -1,18 +1,19 @@
 shader_type spatial;
-render_mode cull_disabled;
 render_mode blend_mix;
+render_mode cull_disabled;
+render_mode unshaded;
 
 uniform sampler2D texture_vol;
 uniform vec4 color : hint_color;
 uniform vec3 scale;
 uniform vec2 tile_uv;
+uniform float dither_strength: hint_range(0, 10);
 uniform int slice_number;
-uniform bool shaded;
 
 vec4 texture3D(sampler2D tex, vec3 UVW, vec2 tiling, float LOD) {
 	
 	UVW = vec3(UVW.x, UVW.z, UVW.y);
-	if(UVW.x < 0.0 || UVW.x > 1.0 || UVW.y < 0.0 || UVW.y > 1.0 || UVW.z < 0.0 || UVW.z > 1.0) {
+	if(any(lessThan(UVW, vec3(0.0))) || any(greaterThan(UVW, vec3(1.0)))) {
 		return vec4(0.0);
 	}
 	
@@ -34,7 +35,7 @@ vec4 texture3D(sampler2D tex, vec3 UVW, vec2 tiling, float LOD) {
 
 vec4 volume(vec3 sample, float LOD) {
 	vec3 new_sample = sample;
-	return texture3D(texture_vol, (new_sample/2.0 + 0.5), tile_uv, LOD).rgba;
+	return texture3D(texture_vol, (new_sample/2.0 + 0.5), tile_uv, LOD);
 }
 
 vec4 modulated_volume(vec3 sample, vec4 modulate, float LOD) {
@@ -44,8 +45,8 @@ vec4 modulated_volume(vec3 sample, vec4 modulate, float LOD) {
 	return vec4(colour, alpha);
 }
 
-varying vec3 pos;
 varying mat4 camera_matrix;
+varying vec3 pos;
 
 void vertex() {
 	
@@ -56,28 +57,42 @@ void vertex() {
 	MODELVIEW_MATRIX = INV_CAMERA_MATRIX * mat4(-CAMERA_MATRIX[0], -CAMERA_MATRIX[1], -CAMERA_MATRIX[2], WORLD_MATRIX[3]);
 	
 	camera_matrix = transpose(WORLD_MATRIX) * CAMERA_MATRIX;
+	
 	pos = (camera_matrix * -vec4(VERTEX,0.0)).xyz;
 	pos /= scale * scale;
-	
+}
+
+float hash(vec2 p) {
+	float q = dot(p, vec2(127.1, 311.7));
+	return fract(sin(q) * 43758.5453);
 }
 
 void fragment() {
 	
-	float bias = 0.01;
-	if(pos.x < -1.0+bias || pos.x > 1.0-bias || pos.y < -1.0+bias || pos.y > 1.0-bias || pos.z < -1.0+bias || pos.z > 1.0-bias) {
+	vec4 cam_ray = camera_matrix * vec4(VERTEX, 0.0);
+	vec3 upos = pos + normalize(cam_ray.xyz) * (hash(FRAGCOORD.xy)*2.0 - 1.0) * dither_strength;
+	
+	float bias = 0.0;
+	if(any(lessThan(upos, -vec3(1.0-bias))) || any(greaterThan(upos, vec3(1.0-bias)))) {
 		discard;
 	}
 	
-	vec4 colour = modulated_volume(pos, color, 0);
+	vec3 dx_vtc = dFdx(pos);
+	vec3 dy_vtc = dFdy(pos);
+	float delta_max_sqr = max(dot(dx_vtc, dx_vtc), dot(dy_vtc, dy_vtc));
+	float mml = 0.5 * log2(delta_max_sqr) + 6.5;
+	
+	vec4 colour = modulated_volume(upos, color, mml);
 	ALBEDO = colour.rgb;
 	ALPHA = colour.a;
 	//ALPHA_SCISSOR = 0.02;
 }
 
+/* LIGHT SHADER DEPRECATED UNTIL FURTHER NOTICE :(
+
 void light() {
 	
 	if(shaded) {
-		
 		//front scatter resolution
 		int fsr = 10;
 		
@@ -100,3 +115,4 @@ void light() {
 	}
 	SPECULAR_LIGHT = vec3(0.0);
 }
+*/
