@@ -1,0 +1,249 @@
+[gd_scene load_steps=9 format=2]
+
+[ext_resource path="res://test_model2.obj" type="ArrayMesh" id=1]
+[ext_resource path="res://addons/volume/volume_shader.shader" type="Shader" id=2]
+[ext_resource path="res://addons/volume/volume.gd" type="Script" id=3]
+[ext_resource path="res://addons/volume/icon.png" type="Texture" id=4]
+[ext_resource path="res://FinalVoxConvert.tres" type="Material" id=5]
+
+[sub_resource type="GDScript" id=1]
+
+script/source = "tool
+extends Spatial
+
+var resolution = 80
+var tiling
+
+func _ready():
+	var mesh_stuff = $MeshInstance.mesh.surface_get_arrays(0)
+	var triangle_img = Image.new()
+	var triangle_tex_array = ImageTexture.new()
+	
+	var vertices = mesh_stuff[0]
+	var indices = mesh_stuff[8]
+	
+	var vol = get_volume($MeshInstance.get_aabb(), resolution)
+	tiling = get_tile_dimensions(vol.z)
+	
+	for i in range(vertices.size()):
+		vertices[i] /= vol / resolution
+		vertices[i] /= $MeshInstance.get_aabb().get_longest_axis_size() / 2.0
+	
+	$Viewport/Polygon2D.material = preload(\"VoxelizerShader.tres\")
+	
+	triangle_tex_array.set_storage(ImageTexture.STORAGE_RAW)
+	
+	var triangle_count = mesh_stuff[8].size()/3
+	var triangle_inc = 50;
+	
+	$Viewport/Polygon2D.material.set_shader_param(\"tiling\", Vector3(tiling.x, tiling.y, vol.z))
+	$Viewport.size = tiling * Vector2(vol.x, vol.y)
+	$Viewport.render_target_update_mode = Viewport.UPDATE_ONCE
+	
+	$Viewport/Polygon2D.polygon = PoolVector2Array([Vector2(), Vector2($Viewport.size.x, 0), $Viewport.size, Vector2(0, $Viewport.size.y)])
+	
+	var temp_img = Image.new()
+	temp_img.create($Viewport.size.x,$Viewport.size.y, false, Image.FORMAT_RGBAH)
+	temp_img.fill(Color(100,1,0))
+	
+	var copied_tex = ImageTexture.new()
+	copied_tex.create_from_image(temp_img, 0)
+	
+	triangle_img.create(3, triangle_inc, false, Image.FORMAT_RGBF)
+	for i in range(0, triangle_count, triangle_inc):
+		
+		var end_index = min(i+triangle_inc, triangle_count)
+		triangle_img.fill(Color(0,0,0))
+		triangle_img.resize(3, end_index - i)
+		triangle_img.lock()
+		for j in range(i, end_index):
+			var point1 = vertices[indices[j*3]]
+			var point2 = vertices[indices[j*3+1]]
+			var point3 = vertices[indices[j*3+2]]
+			
+			triangle_img.set_pixel(0, j-i, Color(point1.x, point1.y, point1.z))
+			triangle_img.set_pixel(1, j-i, Color(point2.x, point2.y, point2.z))
+			triangle_img.set_pixel(2, j-i, Color(point3.x, point3.y, point3.z))
+		triangle_img.unlock()
+		triangle_tex_array.create_from_image(triangle_img, 0)
+		
+		$Viewport/Polygon2D.material.set_shader_param(\"triangles\", triangle_tex_array)
+		$Viewport/Polygon2D.material.set_shader_param(\"continuation\", copied_tex)
+		$Viewport.render_target_update_mode = Viewport.UPDATE_ONCE
+		yield(get_tree(), \"idle_frame\")
+		yield(get_tree(), \"idle_frame\")
+		copied_tex.set_data($Viewport.get_texture().get_data())
+	
+	$Viewport/Polygon2D.material.set_shader_param(\"triangles\", null)
+	$Viewport/Polygon2D.material.set_shader_param(\"continuation\", null)
+	
+	$Viewport/Polygon2D.material = preload(\"FinalVoxConvert.tres\")
+	$Viewport/Polygon2D.material.set_shader_param(\"tex\", copied_tex)
+	$Viewport.render_target_update_mode = Viewport.UPDATE_ONCE
+	yield(get_tree(), \"idle_frame\")
+	var voxel_data = $Viewport.get_texture().get_data()
+	voxel_data.convert(Image.FORMAT_RGBA8)
+	copied_tex.create_from_image(voxel_data, ImageTexture.FLAGS_DEFAULT)
+	
+	$Viewport/Polygon2D.material.set_shader_param(\"tex\", null)
+	
+	$Volume.set_texture(copied_tex)
+	$Volume.set_tiling(tiling)
+
+func get_volume(bound_box, resolution):
+	var vol = Vector3()
+	var longest_side = bound_box.get_longest_axis_size()
+	vol.x = ceil(resolution * bound_box.size.x / longest_side)
+	vol.y = ceil(resolution * bound_box.size.y / longest_side)
+	vol.z = ceil(resolution * bound_box.size.z / longest_side)
+	
+	return vol
+
+func get_tile_dimensions(depth):
+	var tile_dimension = Vector2()
+	
+	var last_factor = depth
+	for i in range(1,depth+1):
+		
+		var candidate_factor = depth/float(i)
+		if (candidate_factor - floor(candidate_factor)) == 0.0:
+			if i == candidate_factor:
+				tile_dimension = Vector2(i, i)
+				break
+			elif i == last_factor:
+				tile_dimension = Vector2(int(candidate_factor), int(last_factor))
+				break
+			last_factor = candidate_factor
+	
+	if tile_dimension.x == 1:
+		return get_tile_dimensions(depth+1)
+	else:
+		return tile_dimension"
+
+[sub_resource type="ShaderMaterial" id=2]
+
+render_priority = 0
+shader = ExtResource( 2 )
+shader_param/color = Color( 0.53125, 0.53125, 0.53125, 1 )
+shader_param/scale = Vector3( 1, 1, 1 )
+shader_param/tile_uv = Vector2( 5, 10 )
+shader_param/dither_strength = 0.25
+shader_param/slice_number = 24
+
+[sub_resource type="ViewportTexture" id=3]
+
+resource_local_to_scene = true
+flags = 0
+viewport_path = NodePath("Viewport")
+
+[node name="Spatial" type="Spatial" index="0"]
+
+transform = Transform( 1, 0, 0, 0, 1, 1.18271e-08, 0, -1.18271e-08, 1, 0, 0, 0 )
+script = SubResource( 1 )
+
+[node name="MeshInstance" type="MeshInstance" parent="." index="0"]
+
+visible = false
+layers = 1
+material_override = null
+cast_shadow = 1
+extra_cull_margin = 0.0
+use_in_baked_light = false
+lod_min_distance = 0.0
+lod_min_hysteresis = 0.0
+lod_max_distance = 0.0
+lod_max_hysteresis = 0.0
+mesh = ExtResource( 1 )
+skeleton = NodePath("..")
+material/0 = null
+
+[node name="Volume" type="ImmediateGeometry" parent="." index="1"]
+
+layers = 1
+material_override = SubResource( 2 )
+cast_shadow = 1
+extra_cull_margin = 0.0
+use_in_baked_light = false
+lod_min_distance = 0.0
+lod_min_hysteresis = 0.0
+lod_max_distance = 0.0
+lod_max_hysteresis = 0.0
+script = ExtResource( 3 )
+_sections_unfolded = [ "Geometry", "Transform", "Visibility" ]
+__meta__ = {
+"_editor_icon": ExtResource( 4 )
+}
+sliceCount = 24
+dither = 0.25
+modulate = Color( 0.53125, 0.53125, 0.53125, 1 )
+blend_mode = 0
+volume_texture = null
+texture_tiling = Vector2( 5, 10 )
+
+[node name="Viewport" type="Viewport" parent="." index="2"]
+
+arvr = false
+size = Vector2( 400, 580 )
+own_world = false
+world = null
+transparent_bg = true
+msaa = 0
+hdr = true
+disable_3d = false
+usage = 2
+debug_draw = 0
+render_target_v_flip = false
+render_target_clear_mode = 0
+render_target_update_mode = 1
+audio_listener_enable_2d = false
+audio_listener_enable_3d = false
+physics_object_picking = false
+gui_disable_input = false
+gui_snap_controls_to_pixels = true
+shadow_atlas_size = 0
+shadow_atlas_quad_0 = 2
+shadow_atlas_quad_1 = 2
+shadow_atlas_quad_2 = 3
+shadow_atlas_quad_3 = 4
+_sections_unfolded = [ "Render Target" ]
+
+[node name="Polygon2D" type="Polygon2D" parent="Viewport" index="0"]
+
+material = ExtResource( 5 )
+polygon = PoolVector2Array( 0, 0, 400, 0, 400, 580, 0, 580 )
+uv = PoolVector2Array(  )
+color = Color( 1, 1, 1, 1 )
+vertex_colors = PoolColorArray(  )
+offset = Vector2( 0, 0 )
+antialiased = false
+texture = null
+texture_offset = Vector2( 0, 0 )
+texture_scale = Vector2( 1, 1 )
+texture_rotation_degrees = 0.0
+invert_enable = false
+invert_border = 100.0
+_sections_unfolded = [ "Material" ]
+
+[node name="Sprite" type="Sprite" parent="." index="3"]
+
+texture = SubResource( 3 )
+centered = false
+_sections_unfolded = [ "Material", "Offset" ]
+
+[node name="Camera" type="Camera" parent="." index="4"]
+
+transform = Transform( 0.877583, 0.229849, -0.420736, 0, 0.877583, 0.479426, 0.479426, -0.420736, 0.770151, -1.68294, 1.9177, 3.0806 )
+keep_aspect = 1
+cull_mask = 1048575
+environment = null
+h_offset = 0.0
+v_offset = 0.0
+doppler_tracking = 0
+projection = 0
+current = false
+fov = 70.0
+size = 1.0
+near = 0.05
+far = 100.0
+
+

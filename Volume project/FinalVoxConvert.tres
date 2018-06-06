@@ -1,0 +1,28 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=2]
+
+[sub_resource type="Shader" id=1]
+
+code = "shader_type canvas_item;
+
+uniform sampler2D tex;
+uniform float thickness = 100.0;
+uniform bool closed_mesh = true;
+
+void fragment() {
+	float density = texture(tex, SCREEN_UV).r;
+	if(closed_mesh) {
+		COLOR = -vec4(density) * thickness;
+	} else {
+		COLOR = vec4(0.1 - density) * thickness;
+	}
+	COLOR.rgb = vec3(1.0);
+}"
+
+[resource]
+
+render_priority = 0
+shader = SubResource( 1 )
+shader_param/thickness = 50.0
+shader_param/closed_mesh = true
+_sections_unfolded = [ "shader_param" ]
+
