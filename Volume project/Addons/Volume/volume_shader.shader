@@ -12,7 +12,6 @@ uniform int slice_number;
 
 vec4 texture3D(sampler2D tex, vec3 UVW, vec2 tiling, float LOD) {
 	
-	UVW = vec3(UVW.x, UVW.z, UVW.y);
 	if(any(lessThan(UVW, vec3(0.0))) || any(greaterThan(UVW, vec3(1.0)))) {
 		return vec4(0.0);
 	}
@@ -30,6 +29,7 @@ vec4 texture3D(sampler2D tex, vec3 UVW, vec2 tiling, float LOD) {
 	vec4 slice0Color = textureLod(tex, slice0Offset/tiling + uv, LOD);
 	vec4 slice1Color = textureLod(tex, slice1Offset/tiling + uv, LOD);
 	
+	//return slice0Color; no filtering.
 	return mix(slice0Color, slice1Color, zOffset);
 }
 
@@ -83,6 +83,7 @@ void fragment() {
 	float mml = 0.5 * log2(delta_max_sqr) + 6.5;
 	
 	vec4 colour = modulated_volume(upos, color, mml);
+	
 	ALBEDO = colour.rgb;
 	ALPHA = colour.a;
 	//ALPHA_SCISSOR = 0.02;
@@ -92,27 +93,22 @@ void fragment() {
 
 void light() {
 	
-	if(shaded) {
-		//front scatter resolution
-		int fsr = 10;
-		
-		vec3 front_scatter_dir = (camera_matrix * vec4(LIGHT, 0.0)).xyz;
-		front_scatter_dir = normalize(front_scatter_dir) / float(fsr);
-		
-		float alpha = 0.0;
-		for(int i = 1; i < fsr; i++) {
-			alpha += modulated_volume(pos + front_scatter_dir*float(i), color, 0).a;
-			if(alpha > 1.0) {
-				alpha = 1.0;
-				break;
-			}
+	//front scatter resolution
+	int fsr = 10;
+	
+	vec3 front_scatter_dir = (camera_matrix * vec4(LIGHT, 0.0)).xyz;
+	front_scatter_dir = normalize(front_scatter_dir) / float(fsr);
+	
+	float alpha = 0.0;
+	for(int i = 1; i < fsr; i++) {
+		alpha += modulated_volume(pos + front_scatter_dir*float(i), color, 0).a;
+		if(alpha > 1.0) {
+			alpha = 1.0;
+			break;
 		}
-		vec3 LIGHTING = LIGHT_COLOR * (1.0-alpha) * ATTENUATION;
-		
-		DIFFUSE_LIGHT += LIGHTING * ALBEDO;
-	} else {
-		DIFFUSE_LIGHT = ALBEDO;
 	}
+	vec3 LIGHTING = LIGHT_COLOR * (1.0-alpha) * ATTENUATION;
+	
+	DIFFUSE_LIGHT += LIGHTING * ALBEDO;
 	SPECULAR_LIGHT = vec3(0.0);
 }
-*/

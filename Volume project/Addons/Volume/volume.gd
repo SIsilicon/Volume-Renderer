@@ -15,11 +15,6 @@ export(Vector2) var texture_tiling = Vector2(8, 16) setget set_tiling
 func _init():
 	material_override = ShaderMaterial.new()
 	material_override.shader = preload("res://addons/volume/volume_shader.shader")
-	
-	#set_slices(sliceCount)
-	#set_modulate(modulate)
-	#set_shaded(shaded)
-	#set_tiling(texture_tiling)
 
 func _process(delta):
 	material_override.set_shader_param("scale", scale)
@@ -28,10 +23,6 @@ func set_modulate(mod):
 	modulate = mod
 	material_override.set_shader_param("color", modulate)
 
-#func set_shaded(boolean):
-	#shaded = boolean
-	#material_override.set_shader_param("shaded", shaded)
-	
 func set_dither(strength):
 	dither = strength
 	material_override.set_shader_param("dither_strength", strength)
@@ -51,7 +42,6 @@ func set_blend(blend):
 	shader = shader.insert(render_mode_loc, new_blend)
 	
 	material_override.shader.code = shader
-	print(blend)
 
 func set_texture(tex):
 	volume_texture = tex
