@@ -11,7 +11,7 @@ config_version=3
 [application]
 
 config/name="VolumeRendering"
-run/main_scene="res://VolumeTesting.tscn"
+run/main_scene="res://VoxelizerTes.tscn"
 config/icon="res://icon.png"
 
 [editor_plugins]

@@ -1,7 +1,6 @@
 shader_type spatial;
 render_mode blend_mix;
-render_mode cull_disabled;
-render_mode unshaded;
+render_mode cull_disabled, unshaded, depth_test_disable;
 
 uniform sampler2D texture_vol;
 uniform vec4 color : hint_color;
@@ -12,12 +11,11 @@ uniform int slice_number;
 
 vec4 texture3D(sampler2D tex, vec3 UVW, vec2 tiling, float LOD) {
 	
-	UVW = vec3(UVW.x, UVW.z, UVW.y);
-	if(any(lessThan(UVW, vec3(0.0))) || any(greaterThan(UVW, vec3(1.0)))) {
+	/*if(any(lessThan(UVW, vec3(0.0))) || any(greaterThan(UVW, vec3(1.0)))) {
 		return vec4(0.0);
-	}
+	}*/
 	
-	float zCoord = UVW.z * tiling.x * tiling.y;
+	float zCoord = -(1.0 - UVW.z) * tiling.x * tiling.y;
 	float zOffset = fract(zCoord);
 	zCoord = floor(zCoord);
 	
@@ -30,6 +28,7 @@ vec4 texture3D(sampler2D tex, vec3 UVW, vec2 tiling, float LOD) {
 	vec4 slice0Color = textureLod(tex, slice0Offset/tiling + uv, LOD);
 	vec4 slice1Color = textureLod(tex, slice1Offset/tiling + uv, LOD);
 	
+	//return slice0Color; //no filtering.
 	return mix(slice0Color, slice1Color, zOffset);
 }
 
@@ -50,7 +49,7 @@ varying vec3 pos;
 
 void vertex() {
 	
-	VERTEX.xy *= 2.0;
+	VERTEX.xy *= 1.2;
 	VERTEX.z *= 1.2;
 	VERTEX *= max(scale.x, max(scale.y, scale.z));
 	
@@ -70,7 +69,8 @@ float hash(vec2 p) {
 void fragment() {
 	
 	vec4 cam_ray = camera_matrix * vec4(VERTEX, 0.0);
-	vec3 upos = pos + normalize(cam_ray.xyz) * (hash(FRAGCOORD.xy)*2.0 - 1.0) * dither_strength;
+	float dither = (hash(FRAGCOORD.xy)*2.0 - 1.0) * dither_strength;
+	vec3 upos = pos + normalize(cam_ray.xyz)*dither;
 	
 	float bias = 0.0;
 	if(any(lessThan(upos, -vec3(1.0-bias))) || any(greaterThan(upos, vec3(1.0-bias)))) {
@@ -82,7 +82,14 @@ void fragment() {
 	float delta_max_sqr = max(dot(dx_vtc, dx_vtc), dot(dy_vtc, dy_vtc));
 	float mml = 0.5 * log2(delta_max_sqr) + 6.5;
 	
+	float depth_tex = texture(DEPTH_TEXTURE, SCREEN_UV).r;
+	vec4 world_pos = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, depth_tex * 2.0 - 1.0, 1.0);
+	world_pos /= world_pos.w;
+	
+	if(VERTEX.z-dither < world_pos.z) discard;
+	
 	vec4 colour = modulated_volume(upos, color, mml);
+	
 	ALBEDO = colour.rgb;
 	ALPHA = colour.a;
 	//ALPHA_SCISSOR = 0.02;
@@ -92,27 +99,22 @@ void fragment() {
 
 void light() {
 	
-	if(shaded) {
-		//front scatter resolution
-		int fsr = 10;
-		
-		vec3 front_scatter_dir = (camera_matrix * vec4(LIGHT, 0.0)).xyz;
-		front_scatter_dir = normalize(front_scatter_dir) / float(fsr);
-		
-		float alpha = 0.0;
-		for(int i = 1; i < fsr; i++) {
-			alpha += modulated_volume(pos + front_scatter_dir*float(i), color, 0).a;
-			if(alpha > 1.0) {
-				alpha = 1.0;
-				break;
-			}
+	//front scatter resolution
+	int fsr = 10;
+	
+	vec3 front_scatter_dir = (camera_matrix * vec4(LIGHT, 0.0)).xyz;
+	front_scatter_dir = normalize(front_scatter_dir) / float(fsr);
+	
+	float alpha = 0.0;
+	for(int i = 1; i < fsr; i++) {
+		alpha += modulated_volume(pos + front_scatter_dir*float(i), color, 0).a;
+		if(alpha > 1.0) {
+			alpha = 1.0;
+			break;
 		}
-		vec3 LIGHTING = LIGHT_COLOR * (1.0-alpha) * ATTENUATION;
-		
-		DIFFUSE_LIGHT += LIGHTING * ALBEDO;
-	} else {
-		DIFFUSE_LIGHT = ALBEDO;
 	}
+	vec3 LIGHTING = LIGHT_COLOR * (1.0-alpha) * ATTENUATION;
+	
+	DIFFUSE_LIGHT += LIGHTING * ALBEDO;
 	SPECULAR_LIGHT = vec3(0.0);
 }
-*/

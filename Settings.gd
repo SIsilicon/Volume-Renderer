@@ -19,14 +19,13 @@ func _blend_mode_changed(item_selected):
 func _colour_changed(color):
 	volume.set_modulate(color)
 
-func _texture_pyramid():
-	volume.set_texture(preload("pyramid_volume.png"))
-
-func _sphere_texture():
-	volume.set_texture(preload("sphere_volume.png"))
-
-func _suzanne_texture():
-	volume.set_texture(preload("suzanne_volume.png"))
-
-func _cup_texture():
-	volume.set_texture(preload("cup_volume.png"))
+func _texture_changed(item):
+	match item:
+		0: volume.set_texture(preload("suzanne_volume.png"))
+		1: volume.set_texture(preload("pyramid_volume.png"))
+		2: volume.set_texture(preload("sphere_volume.png"))
+		3: volume.set_texture(preload("cup_volume.png"))
+	
+	match item:
+		0: volume.set_tiling(Vector2(8,10))
+		_: volume.set_tiling(Vector2(8,16))

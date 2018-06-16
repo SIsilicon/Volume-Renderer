@@ -1,0 +1,102 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=2]
+
+[sub_resource type="Shader" id=1]
+
+code = "shader_type canvas_item;
+
+uniform sampler2D triangles;
+uniform sampler2D continuation;
+
+uniform vec3 tiling = vec3(8, 16, 128);
+
+vec3 hash(vec3 p) {
+	vec3 q = cross(p, vec3(127.1, 311.7, 253.4));
+	return fract(sin(q) * 43758.5453);
+}
+
+float dot2(in vec3 v) {return dot(v,v);}
+float triangle(vec3 p, vec3 a, vec3 b, vec3 c) {
+	vec3 ba = b - a; vec3 pa = p - a;
+	vec3 cb = c - b; vec3 pb = p - b;
+	vec3 ac = a - c; vec3 pc = p - c;
+	vec3 nor = cross(ba, ac);
+	
+	bool _sign = sign(dot(cross(ba, nor), pa)) +
+		sign(dot(cross(cb, nor), pb)) +
+		sign(dot(cross(ac, nor), pc)) < 2.0;
+	
+	float if_true = min(min(
+		dot2(ba*clamp(dot(ba,pa)/dot2(ba), 0.0, 1.0) - pa),
+		dot2(cb*clamp(dot(cb,pb)/dot2(cb), 0.0, 1.0) - pb)),
+		dot2(ac*clamp(dot(ac,pc)/dot2(ac), 0.0, 1.0) - pc));
+	
+	float if_false = pow(dot(nor, pa), 2.0) / dot2(nor);
+	
+	return sqrt(mix(if_false, if_true, float(_sign)));
+}
+
+bool ray_triangle_intersect(vec3 ray_o, vec3 ray_d, in vec3 vert_a, in vec3 vert_b, in vec3 vert_c) {
+	highp float EPSILON = 0.0000001;
+	vec3 e1, e2, h, s, q;
+	float a, f, u, v;
+	
+	e1 = vert_b - vert_a;
+	e2 = vert_c - vert_a;
+	
+	h = cross(ray_d, e2);
+	a = dot(e1, h);
+	
+	if(a > -EPSILON && a < EPSILON) return false;
+	
+	f = 1.0/a;
+	s = ray_o - vert_a;
+	u = f * dot(s, h);
+	
+	if(u < 0.0 || u > 1.0) return false;
+	
+	q = cross(s, e1);
+	v = f * dot(ray_d, q);
+	
+	if(v < 0.0 || (u+v) > 1.0) return false;
+	
+	float t = f * dot(e2, q);
+	if(t > EPSILON) {
+		//intersect = ray_o + ray_d * t;
+		return true;
+	} else return false;
+}
+
+void fragment() {
+	vec3 uvw = vec3(SCREEN_UV * tiling.xy, 0.0);
+	float x = floor(uvw.x);
+	float y = floor(uvw.y);
+	uvw = mod(uvw, vec3(1.0));
+	uvw.z = (y * tiling.x + x) / (tiling.z);
+	
+	uvw = uvw * 2.0 - 1.0;
+	
+	float sdf = texture(continuation, SCREEN_UV).r;
+	for(int i = 0; i < textureSize(triangles, 0).y; i++) {
+		vec3 point_a = texelFetch(triangles, ivec2(0, i), 0).rgb;
+		vec3 point_b = texelFetch(triangles, ivec2(1, i), 0).rgb;
+		vec3 point_c = texelFetch(triangles, ivec2(2, i), 0).rgb;
+		
+		point_a += hash(point_a)*0.00001;
+		point_b += hash(point_b)*0.00001;
+		point_c += hash(point_c)*0.00001;
+		
+		sdf = min(abs(sdf), triangle(uvw, point_a, point_b, point_c)) * sign(sdf);
+		sdf *= float(ray_triangle_intersect(uvw, vec3(0.0, 1.0, 0.0), point_a, point_b, point_c)) * 2.0 - 1.0;
+	}
+	
+	COLOR = vec4(sdf, 0.0,0.0,1.0);
+}"
+
+[resource]
+
+resource_local_to_scene = true
+render_priority = 0
+shader = SubResource( 1 )
+shader_param/tiling = Vector3( 5, 8, 40 )
+_sections_unfolded = [ "Resource", "shader_param" ]
+
